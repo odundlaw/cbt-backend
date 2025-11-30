@@ -8,6 +8,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
+	repo "github.com/odundlaw/cbt-backend/internal/adapters/postgresql/sqlc"
+	"github.com/odundlaw/cbt-backend/internal/users"
 )
 
 type Application struct {
@@ -37,6 +39,15 @@ func (app *Application) mount() http.Handler {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("all is good"))
+	})
+
+	userSerice := users.NewService(repo.New(app.conn))
+	userHandler := users.NewHandler(userSerice)
+
+	r.Route("/api/auth", func(r chi.Router) {
+		r.Post("/register", userHandler.RegisterUser)
+		r.Post("/login", userHandler.LoginUser)
+		r.Post("/forgot-password", userHandler.ForgotPassword)
 	})
 
 	// other routes

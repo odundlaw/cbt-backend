@@ -6,10 +6,8 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/odundlaw/cbt-backend/internal/env"
+	"github.com/odundlaw/cbt-backend/internal/config"
 )
-
-var databaseURL = env.GetString("DATABASE_URL", "")
 
 func main() {
 	ctx := context.Background()
@@ -17,7 +15,7 @@ func main() {
 	cfg := Config{
 		add: ":8080",
 		db: DBConfig{
-			dsn: databaseURL,
+			dsn: config.DatabaseURL,
 		},
 	}
 
