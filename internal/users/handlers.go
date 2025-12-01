@@ -34,7 +34,7 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validation.Validate.Struct(req); err != nil {
-		formattedErr := FormatValidationErrors(err)
+		formattedErr := validation.FormatValidationErrors(err)
 		json.JSONError(w, http.StatusBadRequest, constants.ErrValidationFailed, formattedErr)
 		return
 	}
@@ -72,7 +72,7 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validation.Validate.Struct(req); err != nil {
-		formattedErr := FormatValidationErrors(err)
+		formattedErr := validation.FormatValidationErrors(err)
 		json.JSONError(w, http.StatusBadRequest, constants.ErrValidationFailed, formattedErr)
 		return
 	}
@@ -115,7 +115,7 @@ func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validation.Validate.Struct(req); err != nil {
-		formattedErr := FormatValidationErrors(err)
+		formattedErr := validation.FormatValidationErrors(err)
 		json.JSONError(w, http.StatusBadRequest, constants.ErrValidationFailed, formattedErr)
 		return
 	}
@@ -151,7 +151,7 @@ func (h *handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validation.Validate.Struct(req); err != nil {
-		formattedErr := FormatValidationErrors(err)
+		formattedErr := validation.FormatValidationErrors(err)
 		json.JSONError(w, http.StatusBadRequest, constants.ErrValidationFailed, formattedErr)
 		return
 	}
