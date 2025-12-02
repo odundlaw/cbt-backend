@@ -8,7 +8,7 @@ import (
 
 type Service interface {
 	CreateUser(ctx context.Context, userParams createUserParams) (repo.User, error)
-	CreateAdmin()
+	CreateAdmin(ctx context.Context, adminParams createAdminParams) (repo.User, error)
 	GetUserByID(ctx context.Context, ID int64) (repo.User, error)
 	GetUserByEmail(ctx context.Context, email string) (repo.User, error)
 	UpdateLastLogin(ctx context.Context, ID int64) (repo.User, error)
@@ -46,7 +46,21 @@ type UpdatePasswordResponse struct {
 }
 
 type createAdminParams struct {
-	FullName string `json:"full_name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	FullName   string `json:"full_name" validate:"required,min=3,max=100"`
+	Email      string `json:"email" validate:"required,email"`
+	Password   string `json:"password" validate:"required,min=8"`
+	AdminCode  string `json:"admin_code" validate:"required"`
+	Department string `json:"department" validate:"required"`
+	Phone      string `json:"phone" validate:"required,min=11"`
+}
+
+type adminLoginParams struct {
+	Email         string `json:"email" validate:"required,email"`
+	Password      string `json:"full_name" validate:"required,min=8"`
+	TwoFactorCode string `json:"two_factor_code"`
+}
+
+type adminForgotPasswordParams struct {
+	Email     string `json:"email" validate:"required,email"`
+	AdminCode string `json:"admin_code" validate:"required"`
 }

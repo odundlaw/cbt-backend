@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   country TEXT,
   state TEXT,
   school TEXT,
-  profile_completed BOOLEAN,
+  profile_completed BOOLEAN DEFAULT false,
   status user_status NOT NULL DEFAULT 'none',
 
   password TEXT NOT NULL,

@@ -24,9 +24,10 @@ const (
 
 // User errors
 const (
-	ErrUserNotFound    = "User not found"
-	ErrPasswordTooWeak = "Password does not meet complexity requirements"
-	ErrInvalidLogin    = "Invalid Login details"
+	ErrUserNotFound      = "User not found"
+	ErrPasswordTooWeak   = "Password does not meet complexity requirements"
+	ErrInvalidLogin      = "Invalid Login details"
+	ErrAccountNotApporve = "Admin account not approved, contact super admin"
 )
 
 // Validation errors

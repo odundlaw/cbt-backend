@@ -17,19 +17,22 @@ INSERT INTO users (
   email,
   password,
   role,
+  status,
   admin_code,
+  department,
   phone
 )
-VALUES ($1, $2, $3, 'ADMIN', $4, $5)
+VALUES ($1, $2, $3, 'ADMIN', 'pending_approval', $4, $5, $6)
 RETURNING id, full_name, email, age, phone, date_of_birth, country, state, school, profile_completed, status, password, role, admin_code, department, created_at, last_login, updated_at
 `
 
 type CreateAdminParams struct {
-	FullName  string      `json:"full_name"`
-	Email     string      `json:"email"`
-	Password  string      `json:"password"`
-	AdminCode pgtype.Text `json:"admin_code"`
-	Phone     pgtype.Text `json:"phone"`
+	FullName   string      `json:"full_name"`
+	Email      string      `json:"email"`
+	Password   string      `json:"password"`
+	AdminCode  pgtype.Text `json:"admin_code"`
+	Department pgtype.Text `json:"department"`
+	Phone      pgtype.Text `json:"phone"`
 }
 
 func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (User, error) {
@@ -38,6 +41,7 @@ func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (User,
 		arg.Email,
 		arg.Password,
 		arg.AdminCode,
+		arg.Department,
 		arg.Phone,
 	)
 	var i User

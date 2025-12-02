@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	repo "github.com/odundlaw/cbt-backend/internal/adapters/postgresql/sqlc"
 	"github.com/odundlaw/cbt-backend/internal/constants"
 	"github.com/odundlaw/cbt-backend/internal/helpers"
@@ -33,7 +34,23 @@ func (s *svc) CreateUser(ctx context.Context, userParams createUserParams) (repo
 	return s.repo.CreateUser(ctx, user)
 }
 
-func (s *svc) CreateAdmin() {}
+func (s *svc) CreateAdmin(ctx context.Context, params createAdminParams) (repo.User, error) {
+	hashed, err := helpers.HashPassword(params.Password)
+	if err != nil {
+		return repo.User{}, errors.New(constants.ErrFailedHashPass)
+	}
+
+	adminUser := repo.CreateAdminParams{
+		FullName:   params.FullName,
+		Email:      params.Email,
+		Password:   hashed,
+		AdminCode:  pgtype.Text{String: params.AdminCode},
+		Department: pgtype.Text{String: params.Department},
+		Phone:      pgtype.Text{String: params.Phone},
+	}
+
+	return s.repo.CreateAdmin(ctx, adminUser)
+}
 
 func (s *svc) GetUserByID(ctx context.Context, ID int64) (repo.User, error) {
 	return s.repo.GetUserByID(ctx, ID)

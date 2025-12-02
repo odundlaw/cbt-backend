@@ -15,10 +15,12 @@ INSERT INTO users (
   email,
   password,
   role,
+  status,
   admin_code,
+  department,
   phone
 )
-VALUES ($1, $2, $3, 'ADMIN', $4, $5)
+VALUES ($1, $2, $3, 'ADMIN', 'pending_approval', $4, $5, $6)
 RETURNING *;
 
 
