@@ -50,6 +50,12 @@ func (app *Application) mount() http.Handler {
 		r.Post("/forgot-password", userHandler.ForgotPassword)
 	})
 
+	r.Route("/api/admin", func(r chi.Router) {
+		r.Post("register", userHandler.RegisterAdmin)
+		r.Post("/login", userHandler.LoginAdmin)
+		r.Post("/forgot-password", userHandler.AdminForgotPassword)
+	})
+
 	// other routes
 	//
 	//
