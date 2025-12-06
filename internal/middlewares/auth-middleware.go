@@ -3,72 +3,44 @@ package middlewares
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/odundlaw/cbt-backend/internal/config"
 	"github.com/odundlaw/cbt-backend/internal/constants"
+	"github.com/odundlaw/cbt-backend/internal/helpers"
 	"github.com/odundlaw/cbt-backend/internal/json"
 	tokens "github.com/odundlaw/cbt-backend/internal/jwt"
+	"github.com/odundlaw/cbt-backend/internal/store"
 )
 
 type contextKey string
 
 const UserContextKey = contextKey("user")
 
-func AuthMiddleware(next http.Handler) http.Handler {
+func AuthMiddleware(next http.Handler, redis *store.Redis) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorizaion")
-		refreshHeader := r.Header.Get("X-Refresh-Token")
-		if authHeader == "" {
+		tokenStr, _ := r.Cookie("access_token")
+		if tokenStr.Value == "" {
+			tokenStr.Value = helpers.BearerFromHeader(r)
+		}
+
+		if tokenStr.Value == "" {
 			json.JSONError(w, http.StatusUnauthorized, constants.ErrUnauthorized, nil)
 			return
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			json.JSONError(w, http.StatusUnauthorized, constants.ErrInvalidAuthHeader, nil)
+		claims, err := tokens.VerifyToken(tokenStr.Value, config.AccessSecret)
+		if err != nil {
+			json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
 			return
 		}
 
-		accessToken := parts[1]
-
-		claims, err := tokens.VerifyToken(accessToken, config.AccessSecret)
-		if err == nil {
-			ctx := context.WithValue(r.Context(), UserContextKey, claims)
-			next.ServeHTTP(w, r.WithContext(ctx))
+		if _, err := redis.GetJTI(r.Context(), claims.ID); err != nil {
+			json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
 			return
 		}
 
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			if refreshHeader == "" {
-				json.JSONError(w, http.StatusUnauthorized, constants.ErrInvalidRefreshToken, nil)
-				return
-			}
-
-			refreshClaims, err := tokens.VerifyToken(refreshHeader, config.RefreshSecret)
-			if err != nil {
-				json.JSONError(w, http.StatusUnauthorized, constants.ErrInvalidRefreshToken, nil)
-				return
-			}
-
-			newTokens, err := tokens.GenerateTokens(refreshClaims.UserID, refreshClaims.Email)
-			if err != nil {
-				json.JSONError(w, http.StatusUnauthorized, constants.ErrFailedTokenGen, nil)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), UserContextKey, refreshClaims)
-
-			w.Header().Set("X-New-Access-Token", newTokens.AccessToken)
-			w.Header().Set("X-New-Refresh-Token", newTokens.RefreshToken)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-			return
-		}
-
-		json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
+		ctx := context.WithValue(r.Context(), UserContextKey, claims.Subject)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

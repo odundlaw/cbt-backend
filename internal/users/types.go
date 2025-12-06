@@ -37,7 +37,7 @@ type ResetPasswordParams struct {
 
 type forgotPaswordResponse struct {
 	Email             string `json:"email"`
-	ResetTokenExpires int    `json:"reset_token_expires"`
+	ResetTokenExpires string `json:"reset_token_expires"`
 }
 
 type UpdatePasswordResponse struct {

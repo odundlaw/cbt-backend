@@ -8,4 +8,5 @@ var (
 	RefreshSecret       = []byte(env.GetString("REFRESH_TOKEN_SECRET", ""))
 	ResetPasswordSecret = []byte(env.GetString("RESET_PASSWORD_SECRET", ""))
 	DatabaseURL         = env.GetString("DATABASE_URL", "")
+	RedisURL            = env.GetString("REDIS_ADDR", "")
 )

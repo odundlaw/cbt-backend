@@ -60,7 +60,9 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(user.ID)
 
-	json.JSONSuccess(w, http.StatusOK, constants.MsgAccountCreated, user, tokens)
+	json.JSONSuccess(w, http.StatusOK, constants.MsgAccountCreated, user, &json.Token{
+		ExpiresIn: int,
+	})
 }
 
 func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +138,7 @@ func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	res := forgotPaswordResponse{
 		Email:             user.Email,
-		ResetTokenExpires: token.Expires,
+		ResetTokenExpires: token.ExpRes.Local().String(),
 	}
 
 	json.JSONSuccess(w, http.StatusOK, constants.PswResetSentSuccessful, res, nil)
@@ -281,7 +283,7 @@ func (h *handler) AdminForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	res := forgotPaswordResponse{
 		Email:             user.Email,
-		ResetTokenExpires: token.Expires,
+		ResetTokenExpires: token.ExpRes.Local().String(),
 	}
 
 	json.JSONSuccess(w, http.StatusOK, constants.PswResetSentSuccessful, res, nil)

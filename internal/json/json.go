@@ -4,8 +4,6 @@ package json
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/odundlaw/cbt-backend/internal/jwt"
 )
 
 type FieldError struct {
@@ -17,11 +15,21 @@ type APIResponse struct {
 	Success bool         `json:"success"`
 	Message string       `json:"message"`
 	Data    any          `json:"data,omitempty"`
-	Token   *jwt.Token   `json:"token,omitempty"`
+	Token   *Token       `json:"token,omitempty"`
 	Errors  []FieldError `json:"errors,omitempty"`
 }
 
-func JSONSuccess(w http.ResponseWriter, status int, message string, data any, token *jwt.Token) {
+type Token struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+}
+
+type ForgotPasswordToken struct {
+	ResetToken string `json:"reset_token"`
+	Expires    int    `json:"reset_token_expires"`
+}
+
+func JSONSuccess(w http.ResponseWriter, status int, message string, data any, token *Token) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 

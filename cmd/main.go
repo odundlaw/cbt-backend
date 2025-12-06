@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/odundlaw/cbt-backend/internal/config"
+	"github.com/odundlaw/cbt-backend/internal/store"
 )
 
 func main() {
@@ -16,6 +17,9 @@ func main() {
 		add: ":8080",
 		db: DBConfig{
 			dsn: config.DatabaseURL,
+		},
+		redis: RedisConfig{
+			addr: config.RedisURL,
 		},
 	}
 
