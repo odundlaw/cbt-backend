@@ -60,8 +60,11 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(user.ID)
 
+	helpers.SetAuthCookies(w, tokens)
+
 	json.JSONSuccess(w, http.StatusOK, constants.MsgAccountCreated, user, &json.Token{
-		ExpiresIn: int,
+		AccessToken: tokens.Access,
+		ExpiresIn:   tokens.ExpAcc.Second(),
 	})
 }
 
@@ -105,7 +108,12 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(user.ID)
 
-	json.JSONSuccess(w, http.StatusOK, constants.MsgLoginSuccessful, user, tokens)
+	helpers.SetAuthCookies(w, tokens)
+
+	json.JSONSuccess(w, http.StatusOK, constants.MsgLoginSuccessful, user, &json.Token{
+		AccessToken: tokens.Access,
+		ExpiresIn:   tokens.ExpAcc.Second(),
+	})
 }
 
 func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
@@ -250,7 +258,12 @@ func (h *handler) LoginAdmin(w http.ResponseWriter, r *http.Request) {
 		}
 	}(admin.ID)
 
-	json.JSONSuccess(w, http.StatusOK, constants.MsgAdminLoginSuccessful, admin, tokens)
+	helpers.SetAuthCookies(w, tokens)
+
+	json.JSONSuccess(w, http.StatusOK, constants.MsgAdminLoginSuccessful, admin, &json.Token{
+		AccessToken: tokens.Access,
+		ExpiresIn:   tokens.ExpAcc.Second(),
+	})
 }
 
 func (h *handler) AdminForgotPassword(w http.ResponseWriter, r *http.Request) {
