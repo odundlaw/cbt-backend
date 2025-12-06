@@ -7,7 +7,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/odundlaw/cbt-backend/internal/config"
-	"github.com/odundlaw/cbt-backend/internal/store"
 )
 
 func main() {
