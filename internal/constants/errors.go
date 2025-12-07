@@ -20,6 +20,9 @@ const (
 	ErrInvalidAuthHeader    = "Invalid Authorization header"
 	ErrInvalidRefreshToken  = "Invalid refresh token"
 	ErrFailedTokenGen       = "Failed to Generate new tokens"
+	ErrMissingCookie        = "missing cookies"
+	ErrRevokedToken         = "refresh token revoked"
+	ErrPersistToken         = "could not persist new tokens"
 )
 
 // User errors

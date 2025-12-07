@@ -3,12 +3,15 @@ package jwt
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/odundlaw/cbt-backend/internal/config"
+	"github.com/odundlaw/cbt-backend/internal/constants"
 	"github.com/odundlaw/cbt-backend/internal/store"
 )
 
@@ -108,6 +111,15 @@ func VerifyToken(tokenStr string, secret []byte) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func MustCookie(r *http.Request, name string) (string, error) {
+	cookie, err := r.Cookie(name)
+	if err != nil || cookie.Value == "" {
+		return "", errors.New(constants.ErrMissingCookie + name)
+	}
+
+	return cookie.Value, nil
 }
 
 func Persist(ctx context.Context, r *store.Redis, t *Tokens) error {

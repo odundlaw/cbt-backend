@@ -13,4 +13,5 @@ const (
 	MsgDeleteSuccessful     = "Resource deleted successfully"
 	MsgLogoutSuccessful     = "Logout successful"
 	PswResetSentSuccessful  = "Password reset link set to your email"
+	MsgRefresSuccessful     = "refresh done successful"
 )

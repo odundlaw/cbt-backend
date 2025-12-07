@@ -17,30 +17,33 @@ type contextKey string
 
 const UserContextKey = contextKey("user")
 
-func AuthMiddleware(next http.Handler, redis *store.Redis) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenStr, _ := r.Cookie("access_token")
-		if tokenStr.Value == "" {
-			tokenStr.Value = helpers.BearerFromHeader(r)
-		}
+func AuthMiddleware(redis *store.Redis) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenStr, _ := r.Cookie("access_token")
+			if tokenStr == nil || tokenStr.Value == "" {
+				tokenStr = &http.Cookie{Value: helpers.BearerFromHeader(r)}
+			}
 
-		if tokenStr.Value == "" {
-			json.JSONError(w, http.StatusUnauthorized, constants.ErrUnauthorized, nil)
-			return
-		}
+			if tokenStr.Value == "" {
+				json.JSONError(w, http.StatusUnauthorized, constants.ErrUnauthorized, nil)
+				return
+			}
 
-		claims, err := tokens.VerifyToken(tokenStr.Value, config.AccessSecret)
-		if err != nil {
-			json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
-			return
-		}
+			claims, err := tokens.VerifyToken(tokenStr.Value, config.AccessSecret)
+			if err != nil {
+				json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
+				return
+			}
 
-		if _, err := redis.GetJTI(r.Context(), claims.ID); err != nil {
-			json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
-			return
-		}
+			// Check token JTI in Redis
+			if _, err := redis.GetJTI(r.Context(), claims.ID); err != nil {
+				json.JSONError(w, http.StatusUnauthorized, constants.ErrTokenInvalid, nil)
+				return
+			}
 
-		ctx := context.WithValue(r.Context(), UserContextKey, claims.Subject)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			ctx := context.WithValue(r.Context(), UserContextKey, claims.Subject)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

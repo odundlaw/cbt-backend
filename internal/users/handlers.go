@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	repo "github.com/odundlaw/cbt-backend/internal/adapters/postgresql/sqlc"
@@ -12,20 +13,23 @@ import (
 	"github.com/odundlaw/cbt-backend/internal/helpers"
 	"github.com/odundlaw/cbt-backend/internal/json"
 	"github.com/odundlaw/cbt-backend/internal/jwt"
+	"github.com/odundlaw/cbt-backend/internal/store"
 	"github.com/odundlaw/cbt-backend/internal/validation"
 )
 
-type handler struct {
+type Handler struct {
 	service Service
+	rdb     *store.Redis
 }
 
-func NewHandler(service Service) *handler {
-	return &handler{
+func NewHandler(service Service, rdb *store.Redis) *Handler {
+	return &Handler{
 		service,
+		rdb,
 	}
 }
 
-func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -60,6 +64,11 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(user.ID)
 
+	if err := jwt.Persist(r.Context(), h.rdb, tokens); err != nil {
+		json.JSONError(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
 	helpers.SetAuthCookies(w, tokens)
 
 	json.JSONSuccess(w, http.StatusOK, constants.MsgAccountCreated, user, &json.Token{
@@ -68,7 +77,7 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var req loginParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -108,6 +117,11 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(user.ID)
 
+	if err := jwt.Persist(r.Context(), h.rdb, tokens); err != nil {
+		json.JSONError(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
 	helpers.SetAuthCookies(w, tokens)
 
 	json.JSONSuccess(w, http.StatusOK, constants.MsgLoginSuccessful, user, &json.Token{
@@ -116,7 +130,7 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req forgotPasswordParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -142,6 +156,12 @@ func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = jwt.PersistResetToken(r.Context(), h.rdb, token.JTIRes, strconv.FormatInt(user.ID, 10), token.ExpRes)
+	if err != nil {
+		json.JSONError(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
 	// todo send Email Message
 
 	res := forgotPaswordResponse{
@@ -152,7 +172,7 @@ func (h *handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	json.JSONSuccess(w, http.StatusOK, constants.PswResetSentSuccessful, res, nil)
 }
 
-func (h *handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var req ResetPasswordParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -187,7 +207,7 @@ func (h *handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
-func (h *handler) RegisterAdmin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RegisterAdmin(w http.ResponseWriter, r *http.Request) {
 	var req createAdminParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -213,7 +233,7 @@ func (h *handler) RegisterAdmin(w http.ResponseWriter, r *http.Request) {
 	json.JSONSuccess(w, http.StatusOK, constants.MsgAdminAccountCreated, adminUser, nil)
 }
 
-func (h *handler) LoginAdmin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LoginAdmin(w http.ResponseWriter, r *http.Request) {
 	var req adminLoginParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -266,7 +286,7 @@ func (h *handler) LoginAdmin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) AdminForgotPassword(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) AdminForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req adminForgotPasswordParams
 
 	if err := json.ReadJSON(r, &req); err != nil {
@@ -300,4 +320,69 @@ func (h *handler) AdminForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.JSONSuccess(w, http.StatusOK, constants.PswResetSentSuccessful, res, nil)
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	acc, _ := r.Cookie("access_token")
+	ref, _ := r.Cookie("refresh_token")
+
+	var userID int64
+
+	if acc.Value != "" {
+		if claims, err := jwt.VerifyToken(acc.Value, config.AccessSecret); err != nil {
+			userID = claims.UserID
+			_ = h.rdb.DelJTI(r.Context(), "access:"+claims.ID)
+		}
+	}
+
+	if ref.Value != "" {
+		if claims, err := jwt.VerifyToken(ref.Value, config.RefreshSecret); err != nil {
+			_ = h.rdb.DelJTI(r.Context(), "refresh:"+claims.ID)
+		}
+	}
+
+	helpers.ClearAuthCookies(w)
+	json.JSONSuccess(w, http.StatusOK, constants.MsgLogoutSuccessful, LogoutResData{
+		UserID:      userID,
+		LoggedOutAt: time.Now().String(),
+	}, nil)
+}
+
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	ref, err := jwt.MustCookie(r, "refresh_token")
+	if err != nil {
+		json.JSONError(w, http.StatusUnauthorized, constants.ErrRefreshTokenRequired, nil)
+		return
+	}
+
+	claims, err := jwt.VerifyToken(ref, config.RefreshSecret)
+	if err != nil {
+		json.JSONError(w, http.StatusUnauthorized, constants.ErrInvalidRefreshToken, nil)
+		return
+	}
+
+	userID := strconv.FormatInt(claims.UserID, 10)
+
+	if _, err := h.rdb.GetJTI(r.Context(), "refresh:"+userID); err != nil {
+		json.JSONError(w, http.StatusUnauthorized, constants.ErrRevokedToken, nil)
+		return
+	}
+	_ = h.rdb.DelJTI(r.Context(), "refresh:"+userID)
+
+	toks, err := jwt.GenerateTokens(claims.UserID, claims.Email)
+	if err != nil {
+		json.JSONError(w, http.StatusInternalServerError, constants.ErrFailedTokenGen, nil)
+		return
+	}
+
+	if err := jwt.Persist(r.Context(), h.rdb, toks); err != nil {
+		json.JSONError(w, http.StatusInternalServerError, constants.ErrPersistToken, nil)
+		return
+	}
+
+	helpers.SetAuthCookies(w, toks)
+	json.JSONSuccess(w, http.StatusOK, constants.MsgRefresSuccessful, nil, &json.Token{
+		AccessToken: toks.Access,
+		ExpiresIn:   toks.ExpAcc.Second(),
+	})
 }

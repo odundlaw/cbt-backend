@@ -64,3 +64,8 @@ type adminForgotPasswordParams struct {
 	Email     string `json:"email" validate:"required,email"`
 	AdminCode string `json:"admin_code" validate:"required"`
 }
+
+type LogoutResData struct {
+	UserID      int64  `json:"user_id"`
+	LoggedOutAt string `json:"logged_out_at"`
+}

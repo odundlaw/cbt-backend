@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5"
 	repo "github.com/odundlaw/cbt-backend/internal/adapters/postgresql/sqlc"
+	"github.com/odundlaw/cbt-backend/internal/middlewares"
 	"github.com/odundlaw/cbt-backend/internal/store"
 	"github.com/odundlaw/cbt-backend/internal/users"
 	"github.com/redis/go-redis/v9"
@@ -60,24 +61,10 @@ func (app *Application) mount() http.Handler {
 	})
 
 	userSerice := users.NewService(repo.New(app.conn))
-	userHandler := users.NewHandler(userSerice)
+	userHandler := users.NewHandler(userSerice, rdb)
 
-	r.Route("/api/auth", func(r chi.Router) {
-		r.Post("/register", userHandler.RegisterUser)
-		r.Post("/login", userHandler.LoginUser)
-		r.Post("/forgot-password", userHandler.ForgotPassword)
-	})
+	r.Mount("/", AuthRoutes(userHandler, rdb))
 
-	r.Route("/api/admin", func(r chi.Router) {
-		r.Post("register", userHandler.RegisterAdmin)
-		r.Post("/login", userHandler.LoginAdmin)
-		r.Post("/forgot-password", userHandler.AdminForgotPassword)
-	})
-
-	// other routes
-	//
-	//
-	//
 	return r
 }
 
@@ -93,4 +80,40 @@ func (app *Application) run(h http.Handler) error {
 	log.Printf("server has started at add: %v", server.Addr)
 
 	return server.ListenAndServe()
+}
+
+func AuthRoutes(handler *users.Handler, rdb *store.Redis) http.Handler {
+	r := chi.NewRouter()
+
+	// ——— USER AUTH ———
+	r.Route("/api/auth", func(auth chi.Router) {
+		// Public routes
+		auth.Post("/register", handler.RegisterUser)
+		auth.Post("/login", handler.LoginUser)
+		auth.Post("/forgot-password", handler.ForgotPassword)
+
+		// Protected routes
+		auth.Group(func(protected chi.Router) {
+			protected.Use(middlewares.AuthMiddleware(rdb))
+			protected.Get("/refresh", handler.RefreshToken)
+			protected.Post("/logout", handler.Logout)
+		})
+	})
+
+	// ——— ADMIN AUTH ———
+	r.Route("/api/admin", func(admin chi.Router) {
+		// Public admin routes
+		admin.Post("/register", handler.RegisterAdmin)
+		admin.Post("/login", handler.LoginAdmin)
+		admin.Post("/forgot-password", handler.AdminForgotPassword)
+
+		// Protected admin routes
+		admin.Group(func(protected chi.Router) {
+			protected.Use(middlewares.AuthMiddleware(rdb))
+			protected.Get("/refresh", handler.RefreshToken)
+			protected.Post("/logout", handler.Logout)
+		})
+	})
+
+	return r
 }
